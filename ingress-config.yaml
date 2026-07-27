@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+  # L4 Proxy Protocol Support
+  use-proxy-protocol: "true"
+  
+  # Brotli Compression
+  enable-brotli: "true"
+  brotli-level: "6"
