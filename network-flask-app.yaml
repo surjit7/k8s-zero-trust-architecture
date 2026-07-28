@@ -8,5 +8,12 @@ spec:
       app: flask-app
   policyTypes:
   - Egress
-  egress: []
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocols: TCP
+    - port: 6379
 
