@@ -8,4 +8,11 @@ spec:
       app: redis
   policyTypes:
   - Ingress
-  ingress: []
+  ingress:
+  - from:
+    - podSelector:
+      matchLabels:
+        app: flask-api
+    ports:
+      - protocol: TCP
+        port: 6379
