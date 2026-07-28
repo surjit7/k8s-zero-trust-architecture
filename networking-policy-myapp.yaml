@@ -12,7 +12,7 @@ spec:
   - from:
     - podSelector:
       matchLabels:
-        app: flask-api
+        app: flask-app
     ports:
       - protocol: TCP
         port: 6379
