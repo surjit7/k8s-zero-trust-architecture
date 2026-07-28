@@ -11,8 +11,8 @@ spec:
   ingress:
   - from:
     - podSelector:
-      matchLabels:
-        app: flask-app
+        matchLabels:
+          app: flask-app
     ports:
       - protocol: TCP
         port: 6379
