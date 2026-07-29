@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: second-app
-          image: second-app:v1
+          image: my-second-app:v1
           ports:
             - containerPort: 5001
           resources:
