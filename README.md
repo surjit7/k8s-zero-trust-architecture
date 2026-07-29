@@ -49,25 +49,31 @@ minikube start \
   --cni=cilium \
   --extra-config=kubeadm.skip-phases=addon/kube-proxy
 
-# 2. Verify Cilium is healthy
+#    — or without Cilium —
+# minikube start --network-plugin=cni --cni=false --extra-config=kubeadm.skip-phases=addon/kube-proxy
+
+# 2. Install Cilium (replaces kube-proxy entirely)
+cilium install --set kubeProxyReplacement=true
+
+# 3. Verify Cilium is healthy
 cilium status --wait
 
-# 3. Enable the Ingress addon
+# 4. Enable the Ingress addon
 minikube addons enable ingress
 
-# 4. Create ArgoCD namespace
+# 5. Create ArgoCD namespace
 kubectl create namespace argocd
 
-# 5. Install ArgoCD (server-side apply to avoid conflicts)
+# 6. Install ArgoCD (server-side apply to avoid conflicts)
 kubectl apply -n argocd \
   --server-side \
   --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-# 6. Port-forward to ArgoCD UI
+# 7. Port-forward to ArgoCD UI
 kubectl port-forward svc/argocd-server -n argocd 8001:443
 
-# 7. Get the initial admin password
+# 8. Get the initial admin password
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d; echo
 ```
@@ -93,10 +99,17 @@ openssl x509 -req -days 365 -in server.csr \
   -CA ca.crt -CAkey ca.key -CAcreateserial \
   -out server.crt
 
+# Create the TLS Secret (choose the namespace that fits your setup)
 kubectl create secret tls my-tls-secret \
   --cert=server.crt \
   --key=server.key \
   --namespace=argocd
+
+#   — or in the default namespace —
+# kubectl create secret tls my-tls-secret \
+#   --cert=server.crt \
+#   --key=server.key \
+#   --namespace=default
 ```
 
 ---
