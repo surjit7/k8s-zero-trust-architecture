@@ -8,14 +8,14 @@
 
 This repo is a **guided journey** through the layers that hold modern apps together — from raw containers up through TLS termination, zero-trust networking, and GitOps-driven deployment. Each lab stands alone, but together they paint the full picture.
 
-| Lab | Topic | What You'll Walk Away With |
-|-----|------|------|
-| [01-deployment](deployments/01-deployment/) | Deployments + Services | Rolling updates, replica management, ClusterIP internals |
-| [02-second-app](deployments/02-second-app/) | Multi-App Ingress Routing | Serving two apps on one Ingress controller |
-| [03-statefulset-redis](deployments/03-statefulset-redis/) | StatefulSets + Headless Services | Stable network identity for stateful workloads |
-| [04-ingress](deployments/04-ingress/) | Ingress + TLS + ArgoCD | Host-based routing, TLS termination, GitOps management |
-| [06-network-policy](deployments/06-network-policy/) | NetworkPolicies | Pod-level firewall rules (zero-trust networking) |
-| [07-tls-certs](deployments/07-tls-certs/) | TLS Certificate Generation | Self-signed PKI: CA → server cert → client cert |
+| Lab | Topic | proxy_pass / Load-Balancer Route | What You'll Walk Away With |
+|-----|-------|-----------------------------------|----------------------------|
+| [01-deployment](deployments/01-deployment/) | Deployments + Services | `proxy_pass http://flask-service:5000;` | Rolling updates, replica management, ClusterIP internals |
+| [02-second-app](deployments/02-second-app/) | Multi-App Ingress Routing | `proxy_pass http://second-app-service:8080;` | Serving two apps on one Ingress controller |
+| [03-statefulset-redis](deployments/03-statefulset-redis/) | StatefulSets + Headless Services | `proxy_pass http://redis-headless:6379;` | Stable network identity for stateful workloads |
+| [04-ingress](deployments/04-ingress/) | Ingress + TLS + ArgoCD | `proxy_pass https://flask-service:5000;` + `proxy_pass https://argocd-server.argocd:443;` | Host-based routing, TLS termination, GitOps management |
+| [06-network-policy](deployments/06-network-policy/) | NetworkPolicies | *blocked* (zero-trust egress) | Pod-level firewall rules — ingress + egress isolation |
+| [07-tls-certs](deployments/07-tls-certs/) | TLS Certificate Generation | `proxy_pass https://myapp.com:443;` (with CA-signed cert) | Self-signed PKI: CA → server cert → client cert |
 
 ### Apps
 
