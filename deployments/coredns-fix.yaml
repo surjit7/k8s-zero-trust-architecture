@@ -21,7 +21,7 @@ data:
         # --- YOUR STRICT ALLOWLIST ---
         forward github.com 8.8.8.8 1.1.1.1
         forward google.com 8.8.8.8 1.1.1.1
-        # Anything not listed here will be instantly rejected
+        forward stripe.com 8.8.8.8 1.1.1.1
         # Anything not listed here will be instantly rejected
         
         cache 30
