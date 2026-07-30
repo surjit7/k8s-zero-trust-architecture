@@ -19,6 +19,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
+RUN chown -R 1000:1000 /app
+USER 1000
 # Document the port the container will use
 EXPOSE 5000
 

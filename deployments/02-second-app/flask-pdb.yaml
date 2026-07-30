@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: second-app-pdb
+  namespace: default
+spec:
+  # 1. DEFINE YOUR INDEPENDENT AVAILABILITY GUARANTEE
+  # You can either use maxUnavailable OR minAvailable (choose one)
+  maxUnavailable: 1
+
+  # 2. MATCH THE TARGET DEPLOYMENT PODS
+  selector:
+    matchLabels:
+      app: second-app

@@ -135,10 +135,13 @@ This repo is a **guided journey** through the layers that hold modern apps toget
 
 ```bash
 # 1. Start Minikube with Cilium (eBPF, no kube-proxy)
-minikube start \
+ minikube start \
   --network-plugin=cni \
-  --cni=cilium \
-  --extra-config=kubeadm.skip-phases=addon/kube-proxy
+  --cni=false \
+  --extra-config=kubeadm.skip-phases=addon/kube-proxy \
+  --nodes 3 \
+  --cpus 2 \
+  --memory 6144
 
 #    — or without Cilium —
 # minikube start --network-plugin=cni --cni=false --extra-config=kubeadm.skip-phases=addon/kube-proxy

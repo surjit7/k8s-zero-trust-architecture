@@ -3,6 +3,12 @@ kind: Deployment
 metadata:
   name: second-app-deployment
 spec:
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   replicas: 1
   selector:
     matchLabels:
@@ -11,12 +17,80 @@ spec:
     metadata:
       labels:
         app: second-app
+      annotations:
+        owner: surjit
+        description: Learning scheduler
     spec:
+      # service account control.
+      serviceAccountName: flask-api
+      # ADD TERMINATION GRACE PERIOD HERE (At the Pod spec level)
+      terminationGracePeriodSeconds: 30
+
+      #  nodeSelector:
+      #   kubernetes.io/hostname: minikube-m03
+      # 2. ADD TOPOLOGY SPREAD CONSTRAINTS HERE (At the Pod spec level)
+      affinity:
+        # 1. Node Selection Logic
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - minikube-m02
+                      - minikube-m03
+        # 2. Stay away from other Flask replicas (High Availability)
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - second-app
+              topologyKey: "kubernetes.io/hostname"
+        # 3. POD AFFINITY: Stay close to your database (Low Latency)
+#        podAffinity:
+#          preferredDuringSchedulingIgnoredDuringExecution:
+#            - weight: 100
+#              podAffinityTerm:
+#                labelSelector:
+#                  matchExpressions:
+#                    - key: app
+#                      operator: In
+#                      values:
+#                        - main-database # Target this specific app pod label
+#                topologyKey: "kubernetes.io/hostname"
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: second-app
+
       containers:
         - name: second-app
-          image: my-second-app:v1
+          image: my-second-app:v  5
+          imagePullPolicy: Never
           ports:
             - containerPort: 5001
+          # TARGETED CONFIGMAP KEY MAPPING
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT_TYPE
+
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SERVER_PORT
+
+          # Add resources limit
           resources:
             requests:
               memory: "64Mi"
@@ -24,3 +98,37 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+          #  ADD SECURITY CONTEXT HERE
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+
+          # MOUNT A WRITEABLE TEMP DIRECTORY FOR FLASK CACHES
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          # Liveness
+          livenessProbe:
+            httpGet:
+              path : /livez
+              port : 5001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # Readiness
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+

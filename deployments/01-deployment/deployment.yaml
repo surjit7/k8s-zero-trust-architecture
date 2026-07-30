@@ -17,7 +17,14 @@ spec:
       containers:
       - name: flask-container
         # Replace this with your actual image repository and tag if pushing to a registry
-        image: my-app:v5 
+        image: my-app:v5
         imagePullPolicy: Never
         ports:
         - containerPort: 5001
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

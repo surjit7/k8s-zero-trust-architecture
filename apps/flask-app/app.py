@@ -17,5 +17,20 @@ def hello():
     client_ip = request.remote_addr
     hits = cache.incr('hits')
     return f"Hello from GitOps Flask! Your real IP is: {client_ip}. You are visitor #{hits}."
+
+@app.route("/readyz")
+def readyz():
+    try:
+        # Actively pings Redis; raises an exception if the connection fails
+        cache.ping()
+        return "OK", 200
+    except redis.exceptions.ConnectionError:
+        return "Redis Unavailable", 503
+
+
+@app.route("/livez")
+def livez():
+    return "OK", 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
