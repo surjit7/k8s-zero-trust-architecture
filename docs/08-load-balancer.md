@@ -11,7 +11,7 @@ A **load balancer** distributes incoming network traffic across multiple backend
 ### Why We Need Load Balancers
 
 | Problem | Load Balancer Solution |
-|---------|---------------|
+|---------|------------------------|
 | Single point of failure | Distributes traffic → if one backend fails, others handle the load |
 | Scalability | Spread load across many instances → handle more traffic |
 | Zero-downtime deployments | Route traffic to healthy pods while updating others |
@@ -22,7 +22,7 @@ A **load balancer** distributes incoming network traffic across multiple backend
 ## Load Balancer Types by OSI Layer
 
 | Type | OSI Layer | Routes on | Example |
-|------|--------|-----|-----|
+|------|-----------|-----------|---------|
 | **L4 (Transport)** | Layer 4 (Transport) | IP address + Port | AWS CLB, K8s ClusterIP Service |
 | **L7 (Application)** | Layer 7 (Application) | HTTP headers, paths, cookies, TLS | AWS ALB, NGINX Ingress, HAProxy |
 
@@ -44,26 +44,34 @@ They do **not** inspect the content of the data being transmitted.
 ### L4 Load Balancer Diagram
 
 ```
-                    L4 Load Balancer
-                    (IP + Port only)
-                         │
-              ┌──────────┼──────────┐
-              │          │          │
-              ▼          ▼          ▼
-          Pod-A:8080   Pod-B:8080   Pod-C:8080
-          10.244.1.5   10.244.1.6   10.244.1.7
+              ┌────────────────────────────────┐
+              │        L4 Load Balancer        │
+              │     (IP + Port Only — Layer 4) │
+              │  • AWS CLB/NLB, Azure LB       │
+              │  • K8s ClusterIP Service       │
+              └───────────────┬────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              │               │               │
+              ▼               ▼               ▼
+          ┌─────────┐   ┌─────────┐   ┌─────────┐
+          │ Pod-A:  │   │ Pod-B:  │   │ Pod-C:  │
+          │ 8080    │   │ 8080    │   │ 8080    │
+          │ 10.244  │   │ 10.244  │   │ 10.244  │
+          └─────────┘   └─────────┘   └─────────┘
+         Round-robin / Least connections / Source IP hash
+```
 
 Traffic is distributed by:
-  • Round-robin
-  • Least connections
-  • Random selection
-  • Source IP hash
-```
+- **Round-robin** — sequential distribution
+- **Least connections** — send to least-busy backend
+- **Random selection** — random backend pick
+- **Source IP hash** — sticky to client IP
 
 ### What L4 Cannot Do
 
 | Feature | L4 Support | Reason |
-|---------|-----|--------|
+|---------|------------|--------|
 | Host-based routing (`myapp.com` → App A) | ❌ | No access to HTTP Host header |
 | Path-based routing (`/api` → App A) | ❌ | No access to HTTP URL path |
 | TLS termination | ❌ | Doesn't understand TLS application data |
@@ -73,11 +81,11 @@ Traffic is distributed by:
 ### L4 Load Balancers in Our Cluster
 
 ```
-┌───────────────────────────────────┐
-│  Kubernetes Service (ClusterIP)   │   ← This IS an L4 load balancer
-│  selector: app=flask-app          │   Routes on: IP + Port only
-│  ports: 8080 → 5001              │   Uses: kube-proxy (iptables/IPVS)
-└───────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  Kubernetes Service (ClusterIP)     │  ← This IS an L4 load balancer
+│  selector: app=flask-app            │  Routes on: IP + Port only
+│  ports: 8080 → 5001                 │  Uses: kube-proxy (iptables/IPVS)
+└─────────────────────────────────────┘
 ```
 
 Every **Kubernetes Service** (ClusterIP, NodePort, LoadBalancer) is an L4 load balancer. It routes traffic based on **Service ClusterIP + Port** to the **pod IP + targetPort**. It knows nothing about HTTP, domains, or URLs.
@@ -85,7 +93,7 @@ Every **Kubernetes Service** (ClusterIP, NodePort, LoadBalancer) is an L4 load b
 ### When to Use L4
 
 | Use Case | Example |
-|-----|-------|
+|----------|---------|
 | Database connections | MySQL, PostgreSQL, Redis (internal) |
 | gRPC services | Microservices talking over gRPC |
 | TCP/UDP-based protocols | SSH, custom protocols |
@@ -109,17 +117,17 @@ L7 load balancers operate at the **Application layer** (HTTP/HTTPS). They can in
 ### L7 Load Balancer Diagram
 
 ```
-                    L7 Load Balancer (NGINX Ingress)
-                    (HTTP/HTTPS — reads full request)
-                         │
-              ┌──────────┼──────────┐──────────┐
-              │          │          │          │
-    Host: myapp.com    Host:      Path: /api Path: /health
-    Path: /            mysecondapp.com  → Pod-A  → Health Pod
-              │          │
-              ▼          ▼
-         flask-app    second-app
-         Pods         Pods
+                  L7 Load Balancer (NGINX Ingress)
+                  (HTTP/HTTPS — reads full request)
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+  Host: myapp.com  Host:          Path: /api  Path: /health
+  Path: /          mysecondapp.com
+          │            │
+          ▼            ▼
+     flask-app    second-app
+     Pods         Pods
 ```
 
 ### L7 Routing Rules in Our Cluster
@@ -128,15 +136,15 @@ L7 load balancers operate at the **Application layer** (HTTP/HTTPS). They can in
 # From deployments/04-ingress/ingress.yaml
 spec:
   rules:
-  - host: myapp.com                ← L7: routes by Host header
+  - host: myapp.com                # L7: routes by Host header
     http:
       paths:
-      - path: /                    ← L7: routes by URL path
+      - path: /                    # L7: routes by URL path
         backend:
           service: flask-app-service
           port: 8080
 
-  - host: mysecondapp.com          ← L7: routes to different app
+  - host: mysecondapp.com          # L7: routes to different app
     http:
       paths:
       - path: /
@@ -148,7 +156,7 @@ spec:
 ### What L7 Can Do That L4 Cannot
 
 | Feature | L7 Support | How It Works |
-|---------|-----|------|
+|---------|------------|--------------|
 | Host-based routing | ✅ | Reads `Host: myapp.com` header |
 | Path-based routing | ✅ | Reads `GET /api/users` path |
 | TLS termination | ✅ | Decrypts HTTPS → HTTP |
@@ -161,7 +169,7 @@ spec:
 ### When to Use L7
 
 | Use Case | Example |
-|-----|---------|
+|----------|---------|
 | Web applications | HTTP routing by domain/URL |
 | Microservices API gateway | `/api/v1/users` → user-service |
 | Multi-tenant apps | `tenant1.app.com` → tenant1 pods |
@@ -173,7 +181,7 @@ spec:
 ## L4 vs L7: Side-by-Side Comparison
 
 | Feature | L4 (Transport) | L7 (Application) |
-|---------|--------|-- ------|
+|---------|----------------|------------------|
 | **OSI Layer** | Layer 4 | Layer 7 |
 | **Routes on** | IP + Port | Host, Path, Headers, Cookies, TLS |
 | **Speed** | Faster (less processing) | Slightly slower (parsing HTTP) |
@@ -191,37 +199,37 @@ spec:
 Our architecture uses **both** L4 and L7 load balancers in sequence:
 
 ```
-                    ┌─────────────────────────────┐
-                    │  Client (Browser)           │
-                    │  HTTPS://myapp.com           │
-                    └──────────┬──────────────────┘
-                               │
-                    ┌──────────▼──────────────────┐
-                    │  L7 Load Balancer            │
-                    │  NGINX Ingress               │
-                    │  ─────────────────────       │
-                    │  • TLS termination           │
-                    │  • Host routing (myapp.com)  │
-                    │  • Path routing (/)          │
-                    │  • Header inspection         │
-                    └──────────┬──────────────────┘
-                               │ HTTP (unencrypted)
-                    ┌──────────▼──────────────────┐
-                    │  L4 Load Balancer            │
-                    │  ClusterIP Service           │
-                    │  ─────────────────────       │
-                    │  • IP + port routing         │
-                    │  • Round-robin across pods   │
-                    │  • Endpoint discovery        │
-                    └──────────┬──────────────────┘
-                               │ TCP
-                    ┌──────────▼──────────────────┐
-                    │  Backend Pod                 │
-                    │  flask-app:5001              │
-                    │  ─────────────────────       │
-                    │  • Processes request          │
-                    │  • Returns HTTP response      │
-                    └─────────────────────────────┘
+                  ┌─────────────────────────────┐
+                  │  Client (Browser)           │
+                  │  HTTPS://myapp.com          │
+                  └───────────┬─────────────────┘
+                              │
+                  ┌───────────▼─────────────────┐
+                  │  L7 Load Balancer           │
+                  │  NGINX Ingress              │
+                  │  ───────────────────────────│
+                  │  • TLS termination          │
+                  │  • Host routing (myapp.com) │
+                  │  • Path routing (/)         │
+                  │  • Header inspection        │
+                  └───────────┬─────────────────┘
+                              │ HTTP (unencrypted)
+                  ┌───────────▼─────────────────┐
+                  │  L4 Load Balancer           │
+                  │  ClusterIP Service          │
+                  │  ───────────────────────────│
+                  │  • IP + port routing        │
+                  │  • Round-robin across pods  │
+                  │  • Endpoint discovery       │
+                  └───────────┬─────────────────┘
+                              │ TCP
+                  ┌───────────▼─────────────────┐
+                  │  Backend Pod                │
+                  │  flask-app:5001             │
+                  │  ───────────────────────────│
+                  │  • Processes request        │
+                  │  • Returns HTTP response    │
+                  └─────────────────────────────┘
 ```
 
 ### Why Both L7 + L4?
@@ -240,7 +248,7 @@ L4 (Service) decides:   "Which pod in that service should get it?"
 ## Cloud Provider Load Balancer Comparison
 
 | Cloud | L4 Load Balancer | L7 Load Balancer |
-|-------|--------|-----|
+|-------|------------------|------------------|
 | **AWS** | Classic LB (CLB), Network LB (NLB) | Application LB (ALB) |
 | **GCP** | TCP Proxy, HTTP(S) LB (L4 mode) | HTTP(S) LB, HTTPS LB |
 | **Azure** | Basic LB, Standard LB | Application Gateway |
@@ -254,24 +262,24 @@ L4 (Service) decides:   "Which pod in that service should get it?"
 While load balancers **distribute** traffic, **NetworkPolicies** **restrict** it:
 
 ```
-┌──────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────┐
 │  NetworkPolicy (deployments/06-network-policy/)   │
 │                                                   │
-│  ingress:                                           │
-│    - from:                                          │
-│        - namespaceSelector: {name: ingress-nginx}  │  ← Allow from Ingress
-│        - podSelector: {app: flask-app}             │
-│      ports:                                         │
-│        - protocol: TCP                             │
-│          port: 5001                                │
+│  ingress:                                         │
+│    - from:                                        │
+│        - namespaceSelector: {name: ingress-nginx} │  ← Allow from Ingress
+│        - podSelector: {app: flask-app}            │
+│      ports:                                       │
+│        - protocol: TCP                            │
+│          port: 5001                               │
 │                                                   │
-│  egress:                                            │
-│    - to:                                            │
-│        - podSelector: {app: redis}                 │
-│      ports:                                         │
-│        - protocol: TCP                             │
-│          port: 6379                                │
-└──────────────────────────────────────────────────┘
+│  egress:                                          │
+│    - to:                                          │
+│        - podSelector: {app: redis}                │
+│      ports:                                       │
+│        - protocol: TCP                            │
+│          port: 6379                               │
+└───────────────────────────────────────────────────┘
 ```
 
 NetworkPolicies operate at **Layer 3/4** — they filter traffic by IP and port, acting as a micro-firewall.
@@ -294,7 +302,7 @@ NetworkPolicies operate at **Layer 3/4** — they filter traffic by IP and port,
 ## Cross-References
 
 | Resource | Location |
-|---------|--------|
+|----------|----------|
 | Ingress config (L7 routing) | `deployments/04-ingress/ingress.yaml` |
 | Service config (L4 routing) | `deployments/01-deployment/service.yaml` |
 | TLS termination (L6) | `docs/07-tls.md` |
@@ -302,3 +310,4 @@ NetworkPolicies operate at **Layer 3/4** — they filter traffic by IP and port,
 | NetworkPolicies (L3-L4 firewall) | `deployments/06-network-policy/` |
 | Full request flow | `docs/05-request-flow.md` |
 | OSI model (all layers) | `docs/06-tcp-osi.md` |
+| NGINX L4 Stream Proxy (NEW) | `docs/09-nginx-l4-stream-proxy.md` |

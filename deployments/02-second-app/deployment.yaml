@@ -9,7 +9,7 @@ spec:
     rollingUpdate:
       maxUnavailable: 1
       maxSurge: 1
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: second-app
@@ -40,6 +40,7 @@ spec:
                     values:
                       - minikube-m02
                       - minikube-m03
+                      - minikube
         # 2. Stay away from other Flask replicas (High Availability)
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -65,14 +66,15 @@ spec:
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
+          # whenUnsatisfiable: DoNotSchedule
+          whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
               app: second-app
 
       containers:
         - name: second-app
-          image: my-second-app:v  5
+          image: my-second-app:v5
           imagePullPolicy: Never
           ports:
             - containerPort: 5001
@@ -109,6 +111,13 @@ spec:
           volumeMounts:
             - name: tmp-volume
               mountPath: /tmp
+          # start up probe
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: 5001
+            periodSeconds: 5
+            failureThreshold: 30
           # Liveness
           livenessProbe:
             httpGet:
