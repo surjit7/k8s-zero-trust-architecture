@@ -152,19 +152,19 @@ Before any data is sent over TCP, a connection must be established:
 
 ```
 Client                      Server
-  │                            │
+  │                           │
   │───── SYN ────────────────→│   "I want to connect"
-  │                            │
+  │                           │
   │←──── SYN-ACK ─────────────│   "OK, I'm ready"
-  │                            │
+  │                           │
   │───── ACK ────────────────→│   "Great, let's talk"
-  │                            │
+  │                           │
   │════════ Connection Established ════════
-  │                            │
+  │                           │
   │───── HTTP GET / ─────────→│   Data transfer begins
-  │                            │
+  │                           │
   │←──── HTTP 200 OK ─────────│
-  │                            │
+  │                           │
   │───── FIN ────────────────→│   "I'm done"
   │←──── FIN-ACK ─────────────│   "OK, connection closed"
 ```
@@ -200,7 +200,7 @@ Each hop creates a **new TCP connection** — the Service does not forward the s
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Browser (you)                                       │
+│  Browser (you)                                      │
 │  Layer 7: HTTP                                      │
 │  Layer 6: TLS (encryption)                          │
 │  Layer 4: TCP → Layer 3: IP                         │
