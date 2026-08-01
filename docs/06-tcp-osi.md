@@ -1,6 +1,6 @@
 # TCP & The OSI Model: Networking Foundations
 
-This document explains the OSI model and TCP — the two foundational networking concepts that make Kubernetes networking possible. Everything in this playground (Services, Ingress, TLS, NetworkPolicies) builds on these layers.
+This document explains the OSI model and TCP — the two foundational networking concepts that make Kubernetes networking possible. Everything in this architecture (Services, Ingress, TLS, NetworkPolicies) builds on these layers.
 
 ---
 

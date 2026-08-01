@@ -1,38 +1,39 @@
-# k8splay 🧪
+# Enterprise Zero-Trust Kubernetes Architecture Reference
 
-> Kubernetes, but make it fun. A hands-on playground where networking, security, and GitOps collide — and actually make sense.
+> A comprehensive reference implementation demonstrating a secure, zero-trust Kubernetes architecture. This repository serves as a guide through the layers of modern application infrastructure — from hardened containers up through TLS termination, eBPF-accelerated networking, and GitOps-driven deployment.
 
 ---
 
-## 🧭 What's Inside
+## 🧭 Architectural Overview
 
-This repo is a **guided journey** through the layers that hold modern apps together — from raw containers up through TLS termination, zero-trust networking, and GitOps-driven deployment. Each lab stands alone, but together they paint the full picture.
+This architecture enforces zero-trust principles by asserting that no entity is implicitly trusted. Every network hop, inter-service communication, and client request must be strictly verified, authenticated, and authorized.
 
 > **Core Thesis**: Modern infrastructure is not a perimeter — it's a **chain of trust**. Every hop between pod, service, and external client must be verified, encrypted, and auditable.
 
-| Lab | Topic | Layer | What You'll Walk Away With |
+| Module | Topic | Layer | Key Capabilities Demonstrated |
 |-----|-----|-----|-----|
-| [01-deployment](deployments/01-deployment/) | Deployments + Services | L4 | Rolling updates, replica management, ClusterIP internals |
-| [02-second-app](deployments/02-second-app/) | Multi-App Ingress Routing | L7 | Serving two apps on one Ingress controller |
-| [03-statefulset-redis](deployments/03-statefulset-redis/) | StatefulSets + Headless Services | L4 | Stable network identity for stateful workloads |
+| [01-deployment](deployments/01-deployment/) | L4 Deployments & Services | L4 | PSS compliance, Rolling updates, replica management, ClusterIP internals |
+| [02-second-app](deployments/02-second-app/) | Multi-App Ingress Routing | L7 | Advanced host-based Ingress routing |
+| [03-statefulset-redis](deployments/03-statefulset-redis/) | StatefulSets & Headless Services | L4 | Stable network identity for stateful workloads with strict security contexts |
 | [04-ingress](deployments/04-ingress/) | Ingress + TLS + ArgoCD | L7 + L6 | Host-based routing, TLS termination, GitOps management |
-| [06-network-policy](deployments/06-network-policy/) | Zero Trust Networking | L3-L4 | Pod-level firewall — ingress + egress isolation |
+| [05-troubleshooting](deployments/05-troubleshooting-netshoot/) | Interactive Netshoot & Observability | L3-L7 | Debugging DNS, TCP, and visualizing eBPF drops via Hubble |
+| [06-network-policy](deployments/06-network-policy/) | Zero Trust Networking | L3-L4 | eBPF Pod-level firewall — strict ingress/egress isolation |
 | [07-tls-certs](deployments/07-tls-certs/) | TLS PKI Foundation | L6 | Self-signed CA → server cert → client cert (mTLS prep) |
 
 | **Table of Contents** | Section |
 |------|------|
-| 🧭 [What's Inside](#-whats-inside) | Lab overview & architecture |
+| 🧭 [Architectural Overview](#-architectural-overview) | Lab overview & architecture |
+| 🏗️ [Load Balancing Chain](#-where-the-load-balancer-fits) | L4 to L7 traffic flow |
 | 🚫 [Zero Trust Model](#-zero-trust-network-model) | Trust boundaries, enforcement chain, PKI |
-| ⚙️ [K8s Integration](#-kubernetes-integration) | Control plane, component mapping, flow |
-| 📋 [Labs Summary](#-labs-summary) | App definitions |
+| ⚙️ [Kubernetes Integration](#-kubernetes-integration) | Control plane, component mapping, flow |
 | 🚀 [Getting Started](#-getting-started) | Prerequisites & setup |
-| 🔄 [Rehearsal Workflow](#-rehearsal-workflow) | Lab loop |
+| 🔄 [Deployment Workflow](#-deployment-workflow) | Operational loop |
 
 ### 🏗️ Where the Load Balancer Fits
 
-> Load balancing is **not a single thing** — it's a chain of responsibility across layers.
+> Load balancing is **not a single construct** — it is a chain of responsibility distributed across network layers.
 
-```
+```text
               ┌───────────────────────────────────────────────────────┐
               │                    CLIENT (Browser)                   │
               │  HTTPS://myapp.com:443                                │
@@ -72,13 +73,13 @@ This repo is a **guided journey** through the layers that hold modern apps toget
       │               KUBERNETES SERVICE (ClusterIP) — L4 LB               │
       │  • Routes on: Service ClusterIP + Port                             │
       │  • Round-robin across pod IPs                                      │
-      │  • Endpoints discovery via kube-proxy/Cilium                       │
+      │  • Endpoints discovery via Cilium (eBPF)                           │
       └────────────────────┬───────────────────────────────────────────────┘
                            │ TCP
                            ▼
               ┌──────────────────────────────────────────────┐
               │                  Backend Pod                 │
-              │  • Flask: app.py on port 5001                │
+              │  • Flask API: app.py on port 5001            │
               │  • Redis: port 6379                          │
               │  • Processes HTTP/Redis protocol             │
               └──────────────────────────────────────────────┘
@@ -90,24 +91,12 @@ This repo is a **guided journey** through the layers that hold modern apps toget
 |-------|-------------------|---------|
 | **L4 (External)** | Cloud CLB/NLB or Minikube LoadBalancer Service | Single IP → cluster, TCP health checks, cross-zone distribution |
 | **L7 (Ingress)** | NGINX Ingress Controller | Smart routing by Host/Path/Headers, TLS termination |
-| **L4 (Internal)** | Kubernetes ClusterIP Service | Distribute HTTP traffic to healthy pods |
+| **L4 (Internal)** | Kubernetes ClusterIP Service | Distribute HTTP traffic to healthy pods via eBPF |
 
-**Key Insight**: Each layer handles **different concerns**. You need ALL THREE for production:
-
-1. **L4 external LB** → gives you a public IP and TCP-level health checks
-2. **L7 Ingress** → understands HTTP and routes intelligently
-3. **L4 Service** → distributes traffic within the cluster
-
----
-
-## 📋 Labs Summary
-
-### Apps
-
-| App | What It Does |
-|-----|-----|
-| [flask-app](apps/flask-app/) | Flask web app backed by Redis — your canary for everything |
-| [second-app](apps/second-app/) | Second Flask app — forces real host-based Ingress routing |
+**Key Insight**: Each layer addresses **distinct concerns**. Enterprise production environments require all three:
+1. **L4 external LB** → Provides public IP ingress and edge TCP health checks.
+2. **L7 Ingress** → Evaluates HTTP traffic, enforces TLS, and routes intelligently.
+3. **L4 Service** → Distributes traffic within the cluster securely.
 
 ---
 
@@ -115,27 +104,21 @@ This repo is a **guided journey** through the layers that hold modern apps toget
 
 ### Prerequisites
 
-| Tool | Why You Need It |
+| Tool | Purpose |
 |------|-----|
-| [Minikube](https://minikube.sigs.k8s.io/) | Your local Kubernetes cluster |
-| [Docker](https://www.docker.com/) | Build & load container images |
-| [kubectl](https://kubernetes.io/docs/reference/kubectl/) | Talk to the cluster |
-| [ArgoCD](https://argo-cd.readthedocs.io/) | GitOps — because `kubectl apply` doesn't scale |
-| [Cilium](https://cilium.io/) | eBPF: L4 service routing (replaces kube-proxy), L3-L4 pod firewall, optional L7 policy filtering |
+| [Minikube](https://minikube.sigs.k8s.io/) | Local Kubernetes cluster environment |
+| [Docker](https://www.docker.com/) | Container image construction |
+| [kubectl](https://kubernetes.io/docs/reference/kubectl/) | Cluster control plane interaction |
+| [ArgoCD](https://argo-cd.readthedocs.io/) | GitOps continuous delivery controller |
+| [Cilium](https://cilium.io/) | eBPF networking fabric (L4 routing, L3-L4 isolation) |
 
----
+> **💡 Architectural Note:** Cilium completely replaces `kube-proxy` for **L4 load balancing**. It provides high-performance **L3-L4 NetworkPolicies** directly at the kernel level via eBPF, bypassing the limitations of iptables.
 
-> **💡 L4 vs L7 Clarification:** Cilium replaces kube-proxy for **L4 load balancing** (Service endpoint routing on IP + port). It also provides **L3-L4 NetworkPolicies** (pod firewall) and **optional L7 policy filtering** (HTTP/DNS rules). 
-> 
-> **Key distinction:** L4 service routing ≠ L7 routing. Cilium routes traffic to the right pod (L4). NGINX Ingress routes traffic to the right service (L7). See [L4 vs L7 Load Balancing](docs/08-load-balancer.md) for details.
-
-### One-Time Setup
-
-> **TL;DR** — spin up the cluster with Cilium, install ArgoCD, and you're in business.
+### Initialization
 
 ```bash
-# 1. Start Minikube with Cilium (eBPF, no kube-proxy)
- minikube start \
+# 1. Provision Minikube with Cilium (eBPF mode, bypassing kube-proxy)
+minikube start \
   --network-plugin=cni \
   --cni=false \
   --extra-config=kubeadm.skip-phases=addon/kube-proxy \
@@ -143,47 +126,40 @@ This repo is a **guided journey** through the layers that hold modern apps toget
   --cpus 2 \
   --memory 6144
 
-#    — or without Cilium —
-# minikube start --network-plugin=cni --cni=false --extra-config=kubeadm.skip-phases=addon/kube-proxy
-
-# 2. Install Cilium (replaces kube-proxy entirely)
+# 2. Deploy the Cilium CNI
 cilium install --set kubeProxyReplacement=true
 
-# 3. Verify Cilium is healthy
+# 3. Verify Cilium health
 cilium status --wait
 
-# 4. Enable the Ingress addon
+# 4. Enable Ingress
 minikube addons enable ingress
 
-# 5. Create ArgoCD namespace
+# 5. Bootstrap GitOps (ArgoCD)
 kubectl create namespace argocd
-
-# 6. Install ArgoCD (server-side apply to avoid conflicts)
 kubectl apply -n argocd \
   --server-side \
   --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-# 7. Port-forward to ArgoCD UI
+# 6. Access ArgoCD UI
 kubectl port-forward svc/argocd-server -n argocd 8001:443
 
-# 8. Get the initial admin password
+# 7. Retrieve initial admin password
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d; echo
 ```
 
-Head to **<https://localhost:8001>** and log in. The password is the one you just extracted.
-
 ---
 
-## 🔒 TLS Setup
+## 🔒 TLS & PKI Setup
 
-Before the Ingress can terminate TLS, you need a certificate. This lab generates a self-signed PKI chain and creates a Kubernetes `Secret` from it.
+Before the Ingress controller can terminate TLS, cryptographic material is required. This module generates a self-signed PKI chain and provisions a Kubernetes `Secret`.
 
 ```bash
 # Generate certs (see deployments/07-tls-certs/ for full instructions)
 openssl req -new -x509 -days 365 -nodes \
-  -out ca.crt -keyout ca.key -subj "/CN=MyLocalCA"
+  -out ca.crt -keyout ca.key -subj "/CN=InternalCA"
 
 openssl req -new -nodes -out server.csr -keyout server.key \
   -subj "/CN=myapp.com" \
@@ -193,54 +169,44 @@ openssl x509 -req -days 365 -in server.csr \
   -CA ca.crt -CAkey ca.key -CAcreateserial \
   -out server.crt
 
-# Create the TLS Secret (choose the namespace that fits your setup)
+# Create the TLS Secret
 kubectl create secret tls my-tls-secret \
   --cert=server.crt \
   --key=server.key \
   --namespace=argocd
-
-#   — or in the default namespace —
-# kubectl create secret tls my-tls-secret \
-#   --cert=server.crt \
-#   --key=server.key \
-#   --namespace=default
 ```
 
 ---
 
-## 📖 Concepts Covered
+## 📖 Technical Capabilities Covered
 
-| Concept | What It Solves |
+| Component | Enterprise Implementation |
 |---------|-----|
-| ✅ **Deployments** | Rolling updates, replica management |
-| ✅ **Services** | ClusterIP + Headless — all internal, no NodePorts |
-| ✅ **StatefulSets** | Stable identity for stateful workloads (Redis) |
-| ✅ **Ingress** | HTTP routing, TLS termination, multi-host |
-| ✅ **NetworkPolicies** | Pod-level firewall — ingress + egress isolation |
-| ✅ **ArgoCD** | GitOps continuous deployment |
-| ✅ **Cilium** | eBPF: L4 service LB (replaces kube-proxy) + L3-L4 NetworkPolicy + optional L7 filtering |
-| ✅ **Docker** | Containerizing Python apps |
-| ✅ **TLS/Certs** | Self-signed CA, server, and client certificates |
+| ✅ **Deployments** | Hardened SecurityContexts, Liveness/Readiness probes, strict resource constraints. |
+| ✅ **Services** | `ClusterIP` and `Headless` exclusive internal routing (No direct NodePorts). |
+| ✅ **StatefulSets** | Stable network identity for persistent workloads (Redis) with non-root execution. |
+| ✅ **Ingress** | TLS 1.3 termination, host-based routing, edge protection. |
+| ✅ **NetworkPolicies** | eBPF-enforced pod-level firewall — default-deny ingress/egress isolation. |
+| ✅ **ArgoCD** | GitOps continuous deployment preventing configuration drift. |
+| ✅ **Cilium** | High-performance eBPF replacement for kube-proxy. |
 
 ---
 
-## 🌐 Networking Docs
-
-These explain the *why* behind the *what*.
+## 🌐 Documentation References
 
 | Doc | Topic |
 |-----|-----|
-| [Request Flow](docs/05-request-flow.md) | Browser → Ingress → Service → Pod → Redis — full trace |
-| [TCP & OSI Model](docs/06-tcp-osi.md) | All 7 layers, TCP handshake, K8s mapping |
-| [TLS Explained](docs/07-tls.md) | Handshake, our cert setup, termination vs passthrough |
-| [L4 vs L7 Load Balancing](docs/08-load-balancer.md) | Services (L4) vs Ingress (L7), cloud comparison |
-| [NGINX L4 Stream Proxy](docs/09-nginx-l4-stream-proxy.md) | Cloud LB setup, proxy protocol, TCP prerequisites |
+| [Request Flow](docs/05-request-flow.md) | Browser → Ingress → Service → Pod → Redis tracing |
+| [TCP & OSI Model](docs/06-tcp-osi.md) | Network layer mapping and TCP handshake lifecycle |
+| [TLS Explained](docs/07-tls.md) | Cryptographic handshake and termination patterns |
+| [L4 vs L7 Load Balancing](docs/08-load-balancer.md) | Services (L4) vs Ingress (L7) architectural differences |
+| [NGINX L4 Stream Proxy](docs/09-nginx-l4-stream-proxy.md) | Proxy protocol and TCP pass-through requirements |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
-```
+```text
                       ┌────────────────┐
                       │   Ingress      │
                       │ (TLS + Routing)│
@@ -264,54 +230,46 @@ These explain the *why* behind the *what*.
 
 ---
 
-## 📁 Directory Layout
+## 📁 Repository Structure
 
-```
-k8splay/
+```text
+k8s-zero-trust-architecture/
 ├── README.md                ← You are here
 ├── apps/
-│   ├── flask-app/           ← Flask + Redis source + Dockerfile
-│   └── second-app/          ← Second app source + Dockerfile
-├── deployments/             ← K8s manifests by concept
-│   ├── 01-deployment/
+│   ├── flask-app/           ← Enterprise Flask API + Hardened Dockerfile
+│   └── second-app/          ← Supplemental Application Source
+├── deployments/             ← Declarative Kubernetes Manifests
+│   ├── 01-deployment/       # L4 Deployments, Services, SecurityContexts
 │   ├── 02-second-app/
-│   ├── 03-statefulset-redis/
-│   ├── 04-ingress/          ← App Ingress + ArgoCD Ingress
-│   ├── 06-network-policy/
-│   └── 07-tls-certs/
-└── docs/                    ← Setup & theory guides
-    ├── 01-install-minikube.md
-    ├── 02-install-argocd.md
-    ├── 03-docker-build.md
-    ├── 04-gitops-flow.md
-    ├── 05-request-flow.md
-    ├── 06-tcp-osi.md
-    ├── 07-tls.md
-    ├── 08-load-balancer.md
-    └── 09-nginx-l4-stream-proxy.md  ← NGINX L4 Stream Proxy (NEW)
+│   ├── 03-statefulset-redis/# Stateful Layer Definitions
+│   ├── 04-ingress/          # L7 Routing & Ingress Configuration
+│   ├── 05-troubleshooting-netshoot/ # Interactive Netshoot & Hubble Debugging Lab
+│   ├── 06-network-policy/   # Zero-Trust Egress/Ingress Policies
+│   └── 07-tls-certs/        # PKI and Certificate Management
+└── docs/                    ← Detailed Architecture Documentation
 ```
 
 ---
 
-## 🔄 Rehearsal Workflow
+## 🔄 Deployment Workflow
 
-Each lab is designed to be revisited in isolation. Here's the loop:
+The deployment lifecycle is structured for iterative validation:
 
 ```bash
-# 1. Start cluster (first time only)
+# 1. Provision cluster (Initial setup)
 minikube start --network-plugin=cni --cni=cilium
 
-# 2. Build & load image
+# 2. Build & publish hardened image
 docker build -t flask-app:v1 -f apps/flask-app/Dockerfile apps/flask-app/
 minikube image load flask-app:v1
 
-# 3. Apply a lab
+# 3. Apply declarative state
 kubectl apply -f deployments/01-deployment/
 
-# 4. Inspect
+# 4. Validate infrastructure
 kubectl get pods,svc,ingress -o wide
 
-# 5. Clean up
+# 5. Teardown
 kubectl delete -f deployments/01-deployment/
 ```
 
@@ -319,160 +277,73 @@ kubectl delete -f deployments/01-deployment/
 
 ## 🛡️ Security Posture
 
-- All services use **ClusterIP** or **Headless** — no services exposed to the outside
-- External access flows **only** through the Ingress controller with TLS termination
-- **NetworkPolicies** enforce zero-trust at the pod level
-- **Cilium** provides observable, eBPF-based enforcement — faster and more secure than iptables
+- **Internal Abstraction**: Workloads utilize **ClusterIP** or **Headless** services exclusively.
+- **Controlled Ingress**: External access is strictly mediated by the Ingress controller with enforced TLS termination.
+- **Micro-Segmentation**: **NetworkPolicies** mandate a default-deny zero-trust model at the workload level.
+- **eBPF Enforcement**: **Cilium** delivers observable, kernel-level packet enforcement, bypassing iptables for superior performance and security.
+- **Pod Security Standards (PSS)**: Applications run as unprivileged, non-root users (`uid: 10001`) with read-only filesystems and explicitly dropped capabilities.
 
 ---
 
 ## 🚫 Zero Trust Network Model
 
-Modern applications can no longer rely on network perimeter defenses. This playground implements **zero-trust** at every layer: every connection is untrusted by default and must be verified.
+Modern infrastructure demands the deprecation of perimeter-based defenses. This architecture implements **zero-trust** at every network tier: all connections are untrusted by default and mandate verification.
 
-### The Principle
+### Core Tenet
 
-> **Never trust. Always verify.** Every pod, service, and external client is treated as hostile until proven otherwise.
+> **Never trust. Always verify.** Every workload, service, and external actor is classified as hostile until explicitly authenticated and authorized.
 
-| Trust Boundary | Verification Mechanism | Enforcement Layer | K8s Primitive / Tech |
-|---|---|---|---|
-| **Internet → Cluster** | TCP SYN + TLS 1.3 handshake, valid certificate chain, SNI match | L4 / L7 | Cloud LB → Ingress TLS Secret |
-| **Ingress → Pod** | Host header validation, path prefix match, optional rate-limit / WAF | L7 | Ingress rules + NGINX annotations |
-| **Pod → Pod (same namespace)** | Identity-based allowlist via label selectors, explicit protocol + port | L3-L4 | NetworkPolicy (ingress/egress) |
-| **Pod → Pod (cross-namespace)** | Namespace-scoped egress → ingress peer validation, DNS-based identity | L3-L4 | NetworkPolicy + Cilium FQDN filtering |
-| **Pod → External** | Egress allowlist by CIDR + FQDN, no implicit NAT masquerade bypass | L3-L4 | Cilium Egress Gateway / NetPol |
-| **Control Plane → Node** | mTLS via Kubelet client cert, API server authN/authZ | L7 (gRPC/HTTPS) | K8s RBAC + X.509 bootstrap |
-| **Runtime → Kernel** | eBPF program verification, signed bytecode, no iptables bypass | L3-L4 | Cilium eBPF (tc/XDP) |
+| Boundary | Enforcement Mechanism | OSI Layer | Technology |
+| :--- | :--- | :--- | :--- |
+| **External to Cluster** | L4 Firewall / Load Balancer | L4 | Cloud Provider LB |
+| **Edge to Ingress** | TLS 1.3, Strict SNI Matching | L7 | NGINX Ingress |
+| **Ingress to Workload** | Host/Path Routing, WAF Rules | L7 | NGINX Rules |
+| **Inter-Workload** | Label-based allowlists, Protocol/Port restriction | L3 / L4 | K8s NetworkPolicy (Cilium) |
+| **Egress (Outbound)** | FQDN/CIDR filtering | L3 / L4 | Cilium Egress Policies |
+| **Container Runtime** | Dropped Capabilities, Seccomp profiles | L7 (Kernel) | Pod Security Standards |
 
-### How It Works
+### Enforcement Chain Sequence
 
-```
-+------+    +----------+    +-----------+    +-------+
-|  LB  |--> | Ingress  |--> | Service   |--> |  Pod  |
-+------+    +----------+    +-----------+    +-------+
-   |             |                |              |
-   v             v                v              v
- TCP check    TLS verify      Endpoint        App auth
- eBPF drop    Cert chain      match          mTLS (future)
-
-  Untrusted                    Trusted
-```
-
-#### Enforcement Chain
-
-1. **Default Deny All** — Cilium's eBPF drops everything not explicitly permitted
-2. **Ingress NetPol** — only Ingress controller pods can send traffic to app pods
-3. **Egress NetPol** — app pods can only reach explicitly allowed backends (e.g., Redis)
-4. **TLS on Ingress** — client presents a valid cert; Ingress rejects invalid connections
-5. **PKI Chain** — CA → server cert → client cert (lab `07-tls-certs`) gives you the foundation for mTLS
-
-#### Zero Trust vs Traditional Model
-
-| Aspect | Traditional (Perimeter) | Zero Trust (This Repo) |
-|-----|-----|-----|
-| Network access | Implicit trust inside cluster | Explicit deny by default |
-| Pod communication | Open (except NodePort restrictions) | NetPol-permitted only |
-| Encryption | Optional (intra-cluster often plaintext) | TLS at every boundary |
-| Identity | None | Certificate-based PKI |
-| Auditability | Limited eBPF telemetry | Full eBPF observability |
-
-### Future: mTLS
-
-Lab `07-tls-certs` establishes the **PKI foundation** needed for mutual TLS. The next step — not yet implemented — would be:
-
-- **Server auth** (done): clients verify the server's certificate chain
-- **Client auth** (next): servers verify client certificates — full mTLS
-- **Istio/Linkerd**: automate cert rotation and sidecar injection at scale
+1. **Default Deny**: Cilium's eBPF drops all traffic lacking explicit permission.
+2. **Ingress Authorization**: NetworkPolicies restrict traffic to application pods exclusively from the Ingress controller.
+3. **Egress Allow-listing**: Application pods are constrained to reach only authorized backend data stores (e.g., Redis).
+4. **Cryptographic Assertion**: The Ingress mandates valid TLS presentation from the client.
+5. **PKI Verification**: Lab `07-tls-certs` provisions the required CA material for future Mutual TLS (mTLS) integration.
 
 ---
 
 ## ⚙️ Kubernetes Integration
 
-Kubernetes is the **orchestration backbone** that makes all the layers above work together. This repo doesn't just show individual K8s primitives — it shows how they **chain** to form a production-grade platform.
-
-### How the Pieces Connect
-
-```
-+---------------------------------------------------------------------+
-|                        Kubernetes Control Plane                     |
-|                                                                     | 
-|   API Server    etcd     Scheduler    Controller Manager    Kubelet |
-|        |          |           |              |               |      |
-|        +----------+-----------+--------------+---------------+      |
-|                            |                                        |
-|              +-----------+--+-----------+                           |
-|              |                          |                           |
-|        Deployments               NetworkPolicies                    |
-|        (State)                 (Security)                           |
-|              |                          |                           |
-|              +-----------+--+-----------+                           |
-|                            |                                        |
-|              +-----------+--+-----------+                           |
-|              |                          |                           |
-|         Services (L4)              Cilium (eBPF)                    |
-|              |                          |                           |
-|              +-----------+--+-----------+                           |
-|                            |                                        |
-|                     Worker Nodes                                    |
-|              +-----------+--+-----------+                           |
-|              |           |              |                           |
-|           kubelet     containerd   CNI (Cilium)                     |
-|              |           |              |                           |
-|              +-----------+--+-----------+                           |
-|                            |                                        |
-|                     Pods (Workloads)                                |
-+---------------------------------------------------------------------+
-```
+Kubernetes provides the orchestration fabric binding these advanced patterns together. This architecture demonstrates how disparate primitives chain to form a cohesive, enterprise-grade platform.
 
 ### Component Mapping
 
-| K8s Primitive | Role in This Playground | Why It Matters |
+| Primitive | Role within Architecture | Enterprise Justification |
 |-------|---------|------|
-| **Deployment** | Stateless app replicas (flask-app, second-app) | Rolling updates, self-healing, horizontal scaling |
-| **Service (ClusterIP)** | Internal load balancing — stable IP + DNS for pods | Pods can die & respawn; Service keeps routing stable |
-| **Headless Service** | StatefulSet identity — stable network names (`redis-0`, `redis-1`) | Redis clients need direct pod addressability |
-| **StatefulSet** | Ordered, stable replicas (Redis) | Each pod gets a persistent network identity |
-| **Ingress** | L7 entry point — TLS termination + host/path routing | One IP serves many apps with different domains |
-| **NetworkPolicy** | Pod-level firewall — default-deny + explicit allow | Zero-trust enforcement at L3/L4 |
-| **Cilium (L4 LB)** | Replaces kube-proxy — routes Service traffic on IP + port to pods | Same L4 load balancing as kube-proxy, but with eBPF performance + L7 policy capability |
-| **Cilium (L3-L4)** | NetworkPolicy enforcement — drops traffic not explicitly permitted | Micro-firewall at packet level, faster than iptables |
-| **Secret** | TLS certs, ArgoCD credentials, other sensitive data | Separation of config and secrets from code |
-| **Namespace** | Isolation boundaries (default, argocd) | Multi-tenant security and resource quota management |
+| **Deployment** | Stateless API Workloads | Ensures high availability via RollingUpdates and PodDisruptionBudgets |
+| **Service (ClusterIP)** | Internal L4 Load Balancing | Abstracts pod volatility behind stable virtual IPs |
+| **Headless Service** | StatefulSet Identity | Enables direct pod addressability required by clustered datastores |
+| **StatefulSet** | Persistent Workloads | Guarantees ordered provisioning and stable network identity |
+| **Ingress** | L7 Edge Proxy | Consolidates TLS termination and intelligent routing |
+| **NetworkPolicy** | Workload Micro-firewall | Enforces zero-trust isolation at OSI Layers 3 & 4 |
+| **Cilium (eBPF)** | Datapath & Networking | Replaces kube-proxy for accelerated throughput and advanced observability |
 
-### The Integration Flow
+### Reconciliation Flow
 
+```text
+1. Infrastructure Engineer commits to Git Repository
+         │
+2. ArgoCD detects configuration drift and reconciles API Server state
+         │
+3. Kubernetes Scheduler allocates Pods to Nodes based on Resource Requests
+         │
+4. Cilium (eBPF) injects packet forwarding rules into Kernel
+         │
+5. NGINX Ingress provisions L7 routing paths
+         │
+6. L4 Services establish ClusterIP endpoints
+         │
+7. NetworkPolicies engage to isolate and protect workloads
+         │
+8. Traffic path is secured: Client → LB → Ingress → Service → Pod
 ```
-1. Developer pushes → Git (or ArgoCD sync)
-         │
-2. ArgoCD detects drift → API Server reconciles manifests
-         │
-3. K8s Scheduler places Pods on Nodes
-         │
-4. Cilium (eBPF) programs packet forwarding rules
-         │
-5. Ingress controller creates L7 routes
-         │
-6. Service creates ClusterIP + kube-proxy/Cilium endpoints
-         │
-7. NetworkPolicy eBPF programs enforce allow/deny
-         │
-8. Traffic flows: Client → LB → Ingress → Service → Pod → Backend
-```
-
-### Why Kubernetes, Not Just Docker?
-
-| Concern | Docker Only | Kubernetes |
-|-----|-----|-----|
-| Scaling | Manual | Declarative replicas |
-| Self-healing | Manual restart | Automatic restart + reschedule |
-| Service discovery | Manual config | Built-in DNS + Services |
-| Networking | Host network only | Overlay networking, CNI plugins |
-| Network security | No built-in | NetworkPolicy (eBPF via Cilium) |
-| GitOps | Not native | ArgoCD, Flux, etc. |
-| Multi-cluster | Not possible | Federation, multi-cluster |
-
----
-
-## License
-
-This is a personal learning repo. Use at your own risk. 🎓

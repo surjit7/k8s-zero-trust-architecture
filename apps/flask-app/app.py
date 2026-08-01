@@ -1,36 +1,62 @@
+import os
+import logging
+import sys
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 import redis
 
+# Configure enterprise-grade structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
-# Tell Flask it is behind one trusted proxy (your Ingress Controller)
-# x_for=1 tells it to trust the first IP in the X-Forwarded-For header
+# Trust the internal ingress controller's X-Forwarded headers
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Connect DIRECTLY to the Redis Pod using its Headless DNS name
-cache = redis.Redis(host='redis-0.redis-headless.default.svc.cluster.local', port=6379)
+# Retrieve configuration from environment variables (Zero-Trust/12-Factor App)
+REDIS_HOST = os.environ.get('REDIS_HOST', 'redis-0.redis-headless.default.svc.cluster.local')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+
+# Initialize Redis client
+try:
+    cache = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, socket_timeout=2)
+    logger.info(f"Initialized Redis client targeting {REDIS_HOST}:{REDIS_PORT}")
+except Exception as e:
+    logger.error(f"Failed to initialize Redis client: {e}")
+    sys.exit(1)
 
 @app.route('/')
 def hello():
-    # Because of ProxyFix, remote_addr now contains the real client IP!
     client_ip = request.remote_addr
-    hits = cache.incr('hits')
-    return f"Hello from GitOps Flask! Your real IP is: {client_ip}. You are visitor #{hits}."
+    logger.info(f"Received request at '/' from IP: {client_ip}")
+    
+    try:
+        hits = cache.incr('hits')
+        return f"Enterprise Flask API Online. Client IP: {client_ip}. Total Requests: {hits}.\n"
+    except redis.exceptions.RedisError as e:
+        logger.error(f"Redis operation failed: {e}")
+        return "Internal Service Error: Cache subsystem degraded.\n", 500
 
 @app.route("/readyz")
 def readyz():
+    """Readiness probe endpoint for Kubernetes"""
     try:
-        # Actively pings Redis; raises an exception if the connection fails
         cache.ping()
-        return "OK", 200
+        return "Service Ready", 200
     except redis.exceptions.ConnectionError:
-        return "Redis Unavailable", 503
-
+        logger.warning("Readiness probe failed: Redis unavailable")
+        return "Service Unavailable", 503
 
 @app.route("/livez")
 def livez():
-    return "OK", 200
+    """Liveness probe endpoint for Kubernetes"""
+    return "Service Alive", 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port)

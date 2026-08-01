@@ -47,10 +47,10 @@ argocd login localhost:8080 --insecure --username admin --password <password>
 1. Open ArgoCD UI
 2. Click **New App**
 3. Fill in:
-   - **Name:** `k8splay`
+   - **Name:** `k8s-zero-trust-architecture`
    - **Project:** `default`
    - **Sync Policy:** `Automatic`
-   - **Repository URL:** `https://github.com/surjit7/k8splay.git` (or your fork)
+   - **Repository URL:** `https://github.com/surjit7/k8s-zero-trust-architecture.git` (or your fork)
    - **Revision:** `main`
    - **Path:** `deployments/01-deployment` (or any lab path)
    - **Destination Server:** `https://kubernetes.default.svc`
@@ -59,8 +59,8 @@ argocd login localhost:8080 --insecure --username admin --password <password>
 ### Via CLI
 
 ```bash
-argocd app create k8splay \
-  --repo https://github.com/surjit7/k8splay.git \
+argocd app create k8s-zero-trust-architecture \
+  --repo https://github.com/surjit7/k8s-zero-trust-architecture.git \
   --path deployments/01-deployment \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace default \

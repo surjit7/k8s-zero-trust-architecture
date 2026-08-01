@@ -1,6 +1,6 @@
 # TLS (Transport Layer Security) Explained
 
-This document explains TLS — the protocol that secures all HTTPS traffic in our cluster. It covers what TLS is, how it works, which OSI layer it operates on, and how it's used in our Kubernetes playground.
+This document explains TLS — the protocol that secures all HTTPS traffic in our cluster. It covers what TLS is, how it works, which OSI layer it operates on, and how it's used in this architecture reference.
 
 ---
 

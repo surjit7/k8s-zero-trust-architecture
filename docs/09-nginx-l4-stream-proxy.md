@@ -87,7 +87,7 @@ spec:
       targetPort: 443
 ```
 
-**Minikube magic:** The `LoadBalancer` service gets a ClusterIP that minikube exposes via `minikube tunnel` or your local IP.
+**Minikube Abstraction:** The `LoadBalancer` service gets a ClusterIP that minikube exposes via `minikube tunnel` or your local IP.
 
 ---
 
