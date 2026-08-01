@@ -9,7 +9,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          CLIENT (Your Machine)                          │
-│  Browser / curl  ·  HTTPS → myapp.com:443                              │
+│  Browser / curl  ·  HTTPS → myapp.com:443                               │
 └──────────────────────┬──────────────────────────────────────────────────┘
                        │
                        │  ① DNS: myapp.com → 127.0.0.1 (minikube)
@@ -17,9 +17,9 @@
                        │  ③ TLS: ClientHello → Server cert → key exchange
                        ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    MINIKUBE: Ingress-NGINX Controller                     │
+│                    MINIKUBE: Ingress-NGINX Controller                   │
 │  Pod: ingress-nginx-controller-*  ·  Service: ingress-nginx-controller  │
-│  Listens: 0.0.0.0:443 (HTTPS), 0.0.0.0:80 (HTTP)                      │
+│  Listens: 0.0.0.0:443 (HTTPS), 0.0.0.0:80 (HTTP)                        │
 │  TLS cert: secret `my-tls-secret` (namespace: argocd or default)        │
 │                                                                         │
 │  Routing table (from Ingress resource):                                 │
@@ -31,7 +31,7 @@
 │  └───────────────────┴──────────────────────────────────────────────┘   │
 │                                                                         │
 │  Internals:                                                             │
-│    nginx.ingress.kubernetes.io/rewrite-target: /                       │
+│    nginx.ingress.kubernetes.io/rewrite-target: /                        │
 │    (strips prefix path before forwarding to backend)                    │
 └──────────────────────┬──────────────────────────────────────────────────┘
                        │
@@ -41,15 +41,15 @@
                        │     → flask-app-service.default.svc.cluster.local:8080
                        ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                     FLASK-APP SERVICE (ClusterIP)                        │
+│                     FLASK-APP SERVICE (ClusterIP)                       │
 │  Name: flask-app-service  ·  Namespace: default                         │
-│  Type: ClusterIP  ·  ClusterIP: auto-assigned (e.g., 10.96.0.123)      │
-│  Selector: app=flask-app  ·  Protocol: TCP                             │
-│  Port: 8080 → targetPort: 5001                                         │
+│  Type: ClusterIP  ·  ClusterIP: auto-assigned (e.g., 10.96.0.123)       │
+│  Selector: app=flask-app  ·  Protocol: TCP                              │
+│  Port: 8080 → targetPort: 5001                                          │
 │                                                                         │
-│  Endpoints (kube-proxy / Cilium CNI populates):                        │
-│    - 10.244.0.15:5001 (flask-app-pod-1)                               │
-│    - 10.244.0.16:5001 (flask-app-pod-2)  [if replica > 1]             │
+│  Endpoints (kube-proxy / Cilium CNI populates):                         │
+│    - 10.244.0.15:5001 (flask-app-pod-1)                                 │
+│    - 10.244.0.16:5001 (flask-app-pod-2)  [if replica > 1]               │
 │                                                                         │
 │  Load balancing: round-robin across endpoints (L4 NAT)                  │
 └──────────────────────┬──────────────────────────────────────────────────┘
@@ -60,29 +60,29 @@
                        │     → 10.244.0.15:5001 (one of the pods)
                        ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                       FLASK-APP POD                                      │
-│  Name: flask-app-*  ·  Container port: 5001                            │
-│  App: Flask (Python)  ·  Binds to 0.0.0.0:5001                        │
+│                       FLASK-APP POD                                     │
+│  Name: flask-app-*  ·  Container port: 5001                             │
+│  App: Flask (Python)  ·  Binds to 0.0.0.0:5001                          │
 │                                                                         │
 │  Request lifecycle:                                                     │
-│    1. Receives raw HTTP on :5001 (after TLS was terminated at ingress) │
-│    2. Flask router matches the path (/ → /index or /)                  │
-│    3. May perform Redis cache lookup (GET/SET) via DNS resolution      │
-│    4. Returns HTTP response (e.g., 200 OK, JSON body)                  │
+│    1. Receives raw HTTP on :5001 (after TLS was terminated at ingress)  │
+│    2. Flask router matches the path (/ → /index or /)                   │
+│    3. May perform Redis cache lookup (GET/SET) via DNS resolution       │
+│    4. Returns HTTP response (e.g., 200 OK, JSON body)                   │
 │    5. Response → kube-proxy/Cilium → Ingress controller → Client        │
 └─────────────────────────────────────────────────────────────────────────┘
 
 INTERNAL FLOW (Flask Pod → Redis):
 
-┌──────────────┐     DNS + TCP        ┌──────────────────────────────┐
-│ Flask Pod    │  ────────────────→   │ redis-master-0               │
-│ (10.244.0.15)│  redis-headless:6379  │  Port: 6379 (Redis protocol)│
+┌──────────────┐     DNS + TCP         ┌──────────────────────────────┐
+│ Flask Pod    │  ────────────────→    │ redis-master-0               │
+│ (10.244.0.15)│  redis-headless:6379  │  Port: 6379 (Redis protocol) │
 │              │                       │                              │
 │ Flask code:  │                       │  Redis server:               │
 │   redis.get()│  ←──────  VALUE ────  │   1. Parses Redis command    │
 │   redis.set()│                       │   2. Looks up key in RDB/AOF │
-└──────────────┘                       │   3. Returns raw bytes         │
-                                        └──────────────────────────────┘
+└──────────────┘                       │   3. Returns raw bytes       │
+                                       └──────────────────────────────┘
 ```
 
 ---
@@ -265,7 +265,7 @@ Flask Pod                    Redis Pod (10.244.1.20:6379)
   │ *2                          │  ← Redis RESP2 (RESP3 for modern)
   │ $4                          │
   │ GET                         │  ← Redis command
-  │ $11                       │
+  │ $11                         │
   │ page:index                  │  ← Key
   │                             │
   │                             │  ← Redis processes:
@@ -273,7 +273,7 @@ Flask Pod                    Redis Pod (10.244.1.20:6379)
   │                             │    2. Lookup key in dataset
   │                             │    3. Check TTL
   │                             │
-  │ $13                       │  ← Response
+  │ $13                         │  ← Response
   │ "cached_value"              │
 ```
 
@@ -362,25 +362,25 @@ ArGoCD API server (port 443)
 ┌─────────────────────────────────────────────────────────┐
 │  LAYER  │ PROTOCOL          │ HAPPENS HERE              │
 ├─────────┼───────────────────┼───────────────────────────┤
-│  L7     │ HTTP/1.1 + TLS   │ Browser ↔ Ingress (TLS)   │
-│(App)    │                  │ Ingress ↔ Flask (HTTP)    │
-│         │                  │ Flask ↔ Redis (RESP)      │
+│  L7     │ HTTP/1.1 + TLS    │ Browser ↔ Ingress (TLS)   │
+│(App)    │                   │ Ingress ↔ Flask (HTTP)    │
+│         │                   │ Flask ↔ Redis (RESP)      │
 ├─────────┼───────────────────┼───────────────────────────┤
-│  L6     │ TLS/SSL           │ Ingress terminates TLS   │
-│(Pres)   │                  │ (encryption/decryption)    │
+│  L6     │ TLS/SSL           │ Ingress terminates TLS    │
+│(Pres)   │                   │ (encryption/decryption)   │
 ├─────────┼───────────────────┼───────────────────────────┤
 │  L5     │ (Session)         │ TLS session keys          │
 ├─────────┼───────────────────┼───────────────────────────┤
-│  L4     │ TCP + UDP         │ Client ↔ Ingress (443)   │
-│(Trans)  │                  │ Ingress → Service (8080)  │
-│         │                  │ Service → Pod (5001)      │
-│         │                  │ Pod → Redis (6379)        │
+│  L4     │ TCP + UDP         │ Client ↔ Ingress (443)    │
+│(Trans)  │                   │ Ingress → Service (8080)  │
+│         │                   │ Service → Pod (5001)      │
+│         │                   │ Pod → Redis (6379)        │
 ├─────────┼───────────────────┼───────────────────────────┤
 │  L3     │ IP (IPv4)         │ kube-proxy/Cilium routes  │
-│(Network)│                  │ ClusterIP → Pod IP NAT    │
+│(Network)│                   │ ClusterIP → Pod IP NAT    │
 ├─────────┼───────────────────┼───────────────────────────┤
 │  L2     │ Ethernet/ARP      │ CNI (Cilium/eBPF)         │
-│(Link)   │                  │ Pod → node → overlay        │
+│(Link)   │                   │ Pod → node → overlay      │
 └─────────┴───────────────────┴───────────────────────────┘
 ```
 
