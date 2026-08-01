@@ -201,6 +201,7 @@ kubectl create secret tls my-tls-secret \
 | [TLS Explained](docs/07-tls.md) | Cryptographic handshake and termination patterns |
 | [L4 vs L7 Load Balancing](docs/08-load-balancer.md) | Services (L4) vs Ingress (L7) architectural differences |
 | [NGINX L4 Stream Proxy](docs/09-nginx-l4-stream-proxy.md) | Proxy protocol and TCP pass-through requirements |
+| [Architectural Decisions (ADR)](docs/10-architectural-decisions.md) | The *Why* behind the design (Cilium vs Calico, Headless Services, etc) |
 
 ---
 
@@ -253,7 +254,21 @@ k8s-zero-trust-architecture/
 
 ## 🔄 Deployment Workflow
 
-The deployment lifecycle is structured for iterative validation:
+### ⚡ Automated Bootstrap (Recommended)
+
+This repository includes a professional `Makefile` that handles the entire cluster initialization, eBPF installation, and GitOps bootstrapping.
+
+```bash
+# See all available targets
+make help
+
+# Bootstrap the complete architecture
+make all
+```
+
+### 🛠️ Iterative Manual Workflow
+
+For those who want to understand the individual steps, the deployment lifecycle is structured for iterative validation:
 
 ```bash
 # 1. Provision cluster (Initial setup)
