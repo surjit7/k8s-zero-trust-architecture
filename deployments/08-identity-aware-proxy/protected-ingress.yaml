@@ -1,0 +1,51 @@
+# 1. Ingress specifically for the oauth2-proxy callback/auth routes
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy-ingress
+spec:
+  tls:
+  - hosts:
+    - myapp.com
+    secretName: my-tls-secret
+  rules:
+  - host: myapp.com
+    http:
+      paths:
+      - path: /oauth2
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 4180
+---
+# 2. Overwriting our original Flask Ingress with Zero-Trust Identity Annotations
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flask-ingress-protected
+  annotations:
+    # NGINX intercepts all requests and asks oauth2-proxy if the user is authenticated
+    nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+    # If not authenticated, redirect the user's browser to the IdP login page
+    nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+    # If authenticated, take the JWT data from oauth2-proxy and pass it to Flask via headers!
+    nginx.ingress.kubernetes.io/auth-response-headers: "x-auth-request-user, x-auth-request-email, x-auth-request-access-token"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+  - hosts:
+    - myapp.com
+    secretName: my-tls-secret
+  rules:
+  - host: myapp.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: flask-app-service
+            port:
+              number: 8080
