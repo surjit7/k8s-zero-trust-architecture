@@ -415,9 +415,9 @@ Kubernetes is the **orchestration backbone** that makes all the layers above wor
 |                            |                                        |
 |                     Worker Nodes                                    |
 |              +-----------+--+-----------+                           |
-|              |           |              |                            |
+|              |           |              |                           |
 |           kubelet     containerd   CNI (Cilium)                     |
-|              |           |              |                            |
+|              |           |              |                           |
 |              +-----------+--+-----------+                           |
 |                            |                                        |
 |                     Pods (Workloads)                                |
