@@ -48,40 +48,40 @@ When a client (browser) connects to a TLS-protected server, a handshake establis
 
 ```
 Client                          Server (Ingress)
-  │                                  │
+  │                                 │
   │  ── Client Hello ──────────────→│
-  │  (supported TLS versions,        │
-  │   cipher suites, random bytes)   │
-  │                                  │
+  │  (supported TLS versions,       │
+  │   cipher suites, random bytes)  │
+  │                                 │
   │  ←── Server Hello ──────────────│
-  │  (chosen TLS version,            │
-  │   cipher suite)                  │
-  │                                  │
+  │  (chosen TLS version,           │
+  │   cipher suite)                 │
+  │                                 │
   │  ←── Server Certificate ────────│
   │  (our server.crt signed by CA)  │
-  │                                  │
+  │                                 │
   │  ←── Server Key Exchange ───────│
-  │  (Diffie-Hellman parameters)     │
-  │                                  │
+  │  (Diffie-Hellman parameters)    │
+  │                                 │
   │  ←── Server Hello Done ─────────│
-  │                                  │
+  │                                 │
   │  ── Client Key Exchange ───────→│
-  │  (pre-master secret,             │
+  │  (pre-master secret,            │
   │   encrypted with server's pub)  │
-  │                                  │
+  │                                 │
   │  ── Change Cipher Spec ─────────│
   │  ←── Change Cipher Spec ────────│
-  │                                  │
+  │                                 │
   │  ── Encrypted Handshake ───────→│
   │  ←── Encrypted Handshake ───────│
-  │                                  │
+  │                                 │
   ═══════ Secure Channel Established ═══════
-  │                                  │
+  │                                 │
   │  ── GET / HTTP/1.1 ────────────→│
-  │     (encrypted in TLS)           │
-  │                                  │
+  │     (encrypted in TLS)          │
+  │                                 │
   │  ←── HTTP 200 OK ───────────────│
-  │     (encrypted in TLS)           │
+  │     (encrypted in TLS)          │
 ```
 
 ### Handshake Summary
@@ -114,7 +114,7 @@ Client (Browser)
 │  ┌─────────────────────────────┐│
 │  │ TLS Termination (L6)        ││   ← TLS is decrypted here
 │  │ server.crt / server.key     ││   ← stored in my-tls-secret
-│  │ CA validates the cert chain   ││
+│  │ CA validates the cert chain ││
 │  └─────────────────────────────┘│
 └─────────────────────────────────┘
   │
@@ -122,7 +122,7 @@ Client (Browser)
   ▼
 ┌─────────────────────────────────┐
 │  Flask-App Pod                  │
-│  app.py:5001 — receives plain  │   ← No TLS here
+│  app.py:5001 — receives plain   │   ← No TLS here
 │  HTTP traffic                   │
 └─────────────────────────────────┘
 ```
@@ -156,14 +156,14 @@ Client browser
 ┌─────────────────────────────────────────────┐
 │  CA (Certificate Authority)                 │
 │  ca.crt + ca.key (self-signed root)         │
-│  │                                           │
-│  │ signs with ca.key                         │
-│  ▼                                           │
+│  │                                          │
+│  │ signs with ca.key                        │
+│  ▼                                          │
 │  server.crt (signed by CA, CN=myapp.com)    │
 │  SANs: myapp.com, mysecondapp.com           │
-│  │                                           │
-│  │ signed with ca.key                        │
-│  ▼                                           │
+│  │                                          │
+│  │ signed with ca.key                       │
+│  ▼                                          │
 │  client.crt (for mutual TLS if needed)      │
 └─────────────────────────────────────────────┘
 ```
@@ -274,8 +274,8 @@ IP.1 = 127.0.0.1
 ## TLS in Context of the OSI Model
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ Layer 7 (Application)                                          │
+┌───────────────────────────────────────────────────────────────┐
+│ Layer 7 (Application)                                         │
 │ HTTP: GET / HTTP/1.1                                          │
 │                                                               │
 │ ──── Boundary: TLS operates here (Layer 6) ────────────────── │
@@ -283,17 +283,17 @@ IP.1 = 127.0.0.1
 │ Layer 6 (Presentation) ← TLS LIVES HERE                       │
 │ TLS: Encrypts HTTP data to ciphertext                         │
 │                                                               │
-│ Layer 5 (Session)                                              │
-│ TCP session management                                          │
+│ Layer 5 (Session)                                             │
+│ TCP session management                                        │
 │                                                               │
 │ ──── Data flows through layers ────────────────────────────── │
 │                                                               │
-│ Layer 4 (Transport)                                              │
-│ TCP: port 443 (HTTPS)                                           │
+│ Layer 4 (Transport)                                           │
+│ TCP: port 443 (HTTPS)                                         │
 │                                                               │
-│ Layer 3 (Network)                                                │
-│ IP: routing to Ingress pod IP                                   │
-└──────────────────────────────────────────────────────────────┘
+│ Layer 3 (Network)                                             │
+│ IP: routing to Ingress pod IP                                 │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
